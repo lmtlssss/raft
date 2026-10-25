@@ -16,4 +16,4 @@ jobs:
         with:
           go-version-file: go.mod
       - run: gofmt -w file_snapshot_close_status_test.go
-      - run: go test -count=1 -run TestFileSnapshotSinkFailedCloseIsNotLaterReportedSuccessful -v .
+      - run: go test -count=1 -run 'TestFileSnapshotSinkFailed(Close|Cancel)IsNotLaterReportedSuccessful' -v .
