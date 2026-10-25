@@ -57,7 +57,8 @@ type FileSnapshotSink struct {
 	stateHash hash.Hash64
 	buffered  *bufio.Writer
 
-	closed bool
+	closed   bool
+	closeErr error
 }
 
 // fileSnapshotMeta is stored on disk. We also put a CRC
@@ -394,12 +395,13 @@ func (s *FileSnapshotSink) Write(b []byte) (int, error) {
 }
 
 // Close is used to indicate a successful end.
-func (s *FileSnapshotSink) Close() error {
-	// Make sure close is idempotent
+func (s *FileSnapshotSink) Close() (err error) {
+	// Make repeated calls preserve the outcome of the initial finalization.
 	if s.closed {
-		return nil
+		return s.closeErr
 	}
 	s.closed = true
+	defer func() { s.closeErr = err }()
 
 	// Close the open handles
 	if err := s.finalize(); err != nil {
@@ -447,12 +449,13 @@ func (s *FileSnapshotSink) Close() error {
 }
 
 // Cancel is used to indicate an unsuccessful end.
-func (s *FileSnapshotSink) Cancel() error {
-	// Make sure close is idempotent
+func (s *FileSnapshotSink) Cancel() (err error) {
+	// Closing an already-finalized sink must not hide an earlier failure.
 	if s.closed {
-		return nil
+		return s.closeErr
 	}
 	s.closed = true
+	defer func() { s.closeErr = err }()
 
 	// Close the open handles
 	if err := s.finalize(); err != nil {
